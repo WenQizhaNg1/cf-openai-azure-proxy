@@ -47,6 +47,7 @@ async function handleRequest(request) {
         status: 403
     });
   }
+
   const fetchAPI = `https://${resourceName}.openai.azure.com/openai/deployments/${deployName}/${path}?api-version=${apiVersion}`
 
   const authKey = request.headers.get('Authorization');
@@ -56,6 +57,14 @@ async function handleRequest(request) {
     });
   }
 
+  // 设置代理服务器URL
+  const proxyServer = "http://127.0.0.1:20171";
+  
+  // 创建新的URL，通过代理转发
+  const proxyURL = new URL(proxyServer);
+  proxyURL.pathname = fetchAPI;
+
+  // 设置请求头和其他选项
   const payload = {
     method: request.method,
     headers: {
@@ -65,19 +74,22 @@ async function handleRequest(request) {
     body: typeof body === 'object' ? JSON.stringify(body) : '{}',
   };
 
-  let response = await fetch(fetchAPI, payload);
+  // 使用代理进行请求
+  let response = await fetch(proxyURL, payload);
+
+  // 这里添加你的其他代码，比如流处理等
   response = new Response(response.body, response);
   response.headers.set("Access-Control-Allow-Origin", "*");
 
   if (body?.stream != true){
-    return response
-  } 
+    return response;
+  }
 
-  let { readable, writable } = new TransformStream()
+  let { readable, writable } = new TransformStream();
   stream(response.body, writable);
   return new Response(readable, response);
-
 }
+
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
